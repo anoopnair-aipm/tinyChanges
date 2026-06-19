@@ -1,4 +1,4 @@
-import { query } from '@/database/connection';
+import { query } from '../database/connection';
 import { v4 as uuidv4 } from 'uuid';
 
 export interface Task {

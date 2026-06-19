@@ -20,6 +20,7 @@
     "db:rollback": "npm run db:rollback -w backend"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.10",
     "concurrently": "^8.2.0"
   },
   "engines": {

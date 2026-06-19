@@ -1,6 +1,6 @@
 import axios from 'axios';
 import jwt from 'jsonwebtoken';
-import { UserModel, User } from '@/models/User';
+import { UserModel, User } from '../models/User';
 
 interface GoogleTokenResponse {
   access_token: string;

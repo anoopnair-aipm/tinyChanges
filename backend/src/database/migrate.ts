@@ -1,4 +1,4 @@
-import { query, closePool } from '@/database/connection';
+import { query, closePool } from './connection';
 import fs from 'fs';
 import path from 'path';
 

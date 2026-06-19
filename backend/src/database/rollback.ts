@@ -1,4 +1,4 @@
-import { query, closePool } from '@/database/connection';
+import { query, closePool } from './connection';
 
 async function rollback() {
   try {

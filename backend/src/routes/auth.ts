@@ -1,7 +1,7 @@
 import express, { Router } from 'express';
-import { AuthService } from '@/services/AuthService';
-import { authMiddleware, AuthRequest } from '@/middleware/auth';
-import { UserModel } from '@/models/User';
+import { AuthService } from '../services/AuthService';
+import { authMiddleware, AuthRequest } from '../middleware/auth';
+import { UserModel } from '../models/User';
 
 const router = Router();
 

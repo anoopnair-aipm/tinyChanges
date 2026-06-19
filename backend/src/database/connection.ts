@@ -10,11 +10,11 @@ const pool = new Pool({
   connectionTimeoutMillis: 2000,
 });
 
-pool.on('error', (err) => {
+pool.on('error', (err: Error) => {
   console.error('Unexpected error on idle client', err);
 });
 
-export const query = (text: string, params?: unknown[]): Promise<QueryResult> => {
+export const query = (text: string, params?: unknown[]): Promise<QueryResult<any>> => {
   return pool.query(text, params);
 };
 

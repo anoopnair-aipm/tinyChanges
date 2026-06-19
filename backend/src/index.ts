@@ -1,8 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { query } from '@/database/connection';
-import authRoutes from '@/routes/auth';
+import { query } from './database/connection';
+import authRoutes from './routes/auth';
 
 dotenv.config({ path: '.env.local' });
 
