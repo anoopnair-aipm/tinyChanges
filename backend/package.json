@@ -7,16 +7,16 @@
   "scripts": {
     "dev": "ts-node --project tsconfig.json src/index.ts",
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "npm run db:migrate && node dist/index.js",
     "test": "jest --coverage",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src --ext .ts,.tsx",
     "lint:fix": "eslint src --ext .ts,.tsx --fix",
     "format": "prettier --write \"src/**/*.ts\"",
-    "db:migrate": "ts-node src/database/migrate.ts",
-    "db:rollback": "ts-node src/database/rollback.ts",
-    "db:migrate:create": "ts-node src/database/create-migration.ts"
+    "db:init": "ts-node --project tsconfig.json src/database/migrate.ts",
+    "db:migrate": "ts-node --project tsconfig.json src/database/migrate.ts",
+    "db:rollback": "ts-node --project tsconfig.json src/database/rollback.ts"
   },
   "dependencies": {
     "express": "^4.18.2",

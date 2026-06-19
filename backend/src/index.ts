@@ -1,6 +1,8 @@
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
+import { query } from '@/database/connection';
+import authRoutes from '@/routes/auth';
 
 dotenv.config({ path: '.env.local' });
 
@@ -16,22 +18,30 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+app.get('/api/health', async (req, res) => {
+  try {
+    await query('SELECT 1');
+    res.json({ status: 'ok', database: 'connected', timestamp: new Date().toISOString() });
+  } catch (error) {
+    res.status(503).json({ status: 'error', database: 'disconnected' });
+  }
 });
 
-// Routes placeholder
+// API info
 app.get('/api', (req, res) => {
   res.json({ message: 'tinyChanges API v1.0.0' });
 });
 
+// Routes
+app.use('/api/auth', authRoutes);
+
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   console.error(err.stack);
-  res.status(500).json({
+  res.status(err.status || 500).json({
     error: {
-      code: 'INTERNAL_SERVER_ERROR',
-      message: 'Something went wrong',
+      code: err.code || 'INTERNAL_SERVER_ERROR',
+      message: err.message || 'Something went wrong',
     },
   });
 });

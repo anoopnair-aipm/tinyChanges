@@ -1,10 +1,13 @@
 import { create } from 'zustand';
 
-interface User {
+export interface User {
   id: string;
   email: string;
   name: string;
+  profilePictureUrl?: string;
   isChild: boolean;
+  parentId?: string;
+  children?: Array<{ id: string; name: string; email: string }>;
 }
 
 interface AuthStore {
