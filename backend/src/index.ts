@@ -3,6 +3,8 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { query } from './database/connection';
 import authRoutes from './routes/auth';
+import taskRoutes from './routes/tasks';
+import rewardRoutes from './routes/rewards';
 
 dotenv.config({ path: '.env.local' });
 
@@ -34,6 +36,8 @@ app.get('/api', (req, res) => {
 
 // Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/tasks', taskRoutes);
+app.use('/api/rewards', rewardRoutes);
 
 // Error handling middleware
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {

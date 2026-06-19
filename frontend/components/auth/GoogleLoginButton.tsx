@@ -1,10 +1,6 @@
 'use client';
 
-interface GoogleLoginButtonProps {
-  isChild?: boolean;
-}
-
-export default function GoogleLoginButton({ isChild = false }: GoogleLoginButtonProps) {
+export default function GoogleLoginButton() {
   const handleLogin = () => {
     const params = new URLSearchParams({
       client_id: process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || '',
