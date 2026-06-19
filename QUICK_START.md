@@ -1,88 +1,168 @@
 # Quick Start Guide 🚀
 
-Get tinyChanges running locally in 5 minutes!
+Get tinyChanges running locally in 10 minutes!
 
 ## Prerequisites
 
-- Node.js 18+
-- PostgreSQL (or Docker)
-- Google OAuth credentials
+- ✅ Node.js 18+ ([Download](https://nodejs.org/))
+- ✅ Docker ([Download](https://www.docker.com/products/docker-desktop)) OR PostgreSQL installed
+- ✅ Google account
 
-## Step 1: Get Google OAuth Credentials
+## Step 1: Get Google OAuth Credentials 🔑
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select an existing one
+**Detailed instructions**: See [GOOGLE_OAUTH_SETUP.md](./GOOGLE_OAUTH_SETUP.md)
+
+Quick summary:
+1. Visit [Google Cloud Console](https://console.cloud.google.com/)
+2. Create new project: **tinyChanges**
 3. Enable **Google+ API**
-4. Go to **Credentials** → **Create Credentials** → **OAuth 2.0 Client IDs**
-5. Choose **Web application**
-6. Add Authorized redirect URIs:
-   - `http://localhost:3000/api/auth/callback`
-   - `http://localhost:3000/auth/callback`
-7. Copy your **Client ID** and **Client Secret**
+4. Create OAuth 2.0 credentials:
+   - Type: **Web application**
+   - Name: **tinyChanges Web Client**
+   - Redirect URIs:
+     - `http://localhost:3000/api/auth/callback`
+     - `http://localhost:3000/auth/callback`
+5. Copy your **Client ID** and **Client Secret**
 
-## Step 2: Set Up Environment Variables
+🎯 **Have them ready before Step 2!**
 
-**Backend** (`backend/.env.local`):
+## Step 2: Set Up Environment Variables 🔐
+
+### Backend Configuration
+
+Create `backend/.env.local`:
 ```bash
 NODE_ENV=development
 PORT=5000
 DATABASE_URL=postgresql://tinychanges:tinychanges_dev@localhost:5432/tinychanges_dev
-GOOGLE_CLIENT_ID=your_client_id_here
-GOOGLE_CLIENT_SECRET=your_client_secret_here
-JWT_SECRET=your_super_secret_jwt_key_12345
+GOOGLE_CLIENT_ID=PASTE_YOUR_CLIENT_ID_HERE
+GOOGLE_CLIENT_SECRET=PASTE_YOUR_CLIENT_SECRET_HERE
+JWT_SECRET=my_super_secret_jwt_key_tinychanges_2026
 FRONTEND_URL=http://localhost:3000
 ```
 
-**Frontend** (`frontend/.env.local`):
+### Frontend Configuration
+
+Create `frontend/.env.local`:
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:5000
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_client_id_here
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=PASTE_YOUR_CLIENT_ID_HERE
 ```
 
-## Step 3: Start PostgreSQL
+✅ **Replace the placeholders with your actual credentials!**
 
-Using Docker:
+## Step 3: Start PostgreSQL 🐘
+
+### Option A: Using Docker (Recommended)
 ```bash
 docker-compose up -d postgres
 ```
 
-Or if you have PostgreSQL installed locally:
+Verify it's running:
 ```bash
-createdb tinychanges_dev
+docker ps
 ```
 
-## Step 4: Install Dependencies & Run Migrations
+You should see `tinychanges-db` in the list.
 
+### Option B: Using Local PostgreSQL
+```bash
+# Create the database
+createdb -U postgres tinychanges_dev
+
+# Or if you have a different setup:
+psql -U your_username -d postgres -c "CREATE DATABASE tinychanges_dev;"
+```
+
+## Step 4: Install Dependencies 📦
+
+From the project root:
 ```bash
 npm install
+```
+
+This installs dependencies for both backend and frontend.
+
+## Step 5: Run Database Migrations 🗄️
+
+```bash
 cd backend
 npm run db:init
 ```
 
-## Step 5: Start Development Servers
+You should see:
+```
+🔄 Running database migrations...
+✓ Executed: CREATE TABLE IF NOT EXISTS users...
+✓ Executed: CREATE TABLE IF NOT EXISTS tasks...
+...
+✅ Migrations completed successfully
+```
 
-**Option A: Start both together**
+## Step 6: Start Development Servers 🚀
+
+### Option A: Start Everything Together (Easiest)
+
+From the project root:
 ```bash
 npm run dev
 ```
 
-**Option B: Start separately**
-```bash
-# Terminal 1: Backend
-cd backend && npm run dev
+This starts both backend and frontend in parallel.
 
-# Terminal 2: Frontend
-cd frontend && npm run dev
+You'll see:
+```
+Backend: 🚀 Server running on http://localhost:5000
+Frontend: ▲ Next.js ready on http://localhost:3000
 ```
 
-## Step 6: Test It Out! 🎉
+### Option B: Start Separately (If you need to debug)
 
+**Terminal 1 - Backend:**
+```bash
+cd backend
+npm run dev
+```
+
+**Terminal 2 - Frontend:**
+```bash
+cd frontend
+npm run dev
+```
+
+## Step 7: Test the App! 🎉
+
+### Test Parent Login:
 1. Open **http://localhost:3000**
-2. Click **"Get Started"** → **"Sign in with Google"**
-3. Log in with your Google account
-4. You're now a parent! ✅
-5. Add a child by filling in the form on the dashboard
-6. Visit **http://localhost:3000/login/child** to test child login
+2. Click **"Get Started"**
+3. Click **"Sign in with Google"**
+4. Log in with your Google account
+5. You should see the parent dashboard ✅
+
+### Test Adding a Child:
+1. On the parent dashboard, click **"+ Add Child"**
+2. Enter a child's name and email (e.g., `tommy@example.com`)
+3. Click **"Save Child"**
+4. You should see the child listed ✅
+
+### Test Child Login:
+1. Go to **http://localhost:3000/login/child**
+2. Click **"Sign in with Google"**
+3. Log in with the **child's email** you added
+4. You should see the child dashboard ✅
+
+### Success! 🎊
+If you see both dashboards working, your setup is complete!
+
+## Verify Everything Works
+
+```bash
+# Check backend is running
+curl http://localhost:5000/api/health
+
+# Should return:
+# {"status":"ok","database":"connected","timestamp":"..."}
+```
 
 ## What Works Now
 
