@@ -17,15 +17,21 @@ interface GoogleUserInfo {
 
 export class AuthService {
   static async verifyGoogleToken(code: string): Promise<GoogleUserInfo> {
+    // Google requires application/x-www-form-urlencoded, not JSON
+    const params = new URLSearchParams({
+      code,
+      client_id: process.env.GOOGLE_CLIENT_ID || '',
+      client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
+      redirect_uri: `${process.env.FRONTEND_URL}/api/auth/callback`,
+      grant_type: 'authorization_code',
+    });
+
+    console.log('Google token exchange - redirect_uri:', `${process.env.FRONTEND_URL}/api/auth/callback`);
+
     const tokenResponse = await axios.post<GoogleTokenResponse>(
       'https://oauth2.googleapis.com/token',
-      {
-        code,
-        client_id: process.env.GOOGLE_CLIENT_ID,
-        client_secret: process.env.GOOGLE_CLIENT_SECRET,
-        redirect_uri: `${process.env.FRONTEND_URL}/api/auth/callback`,
-        grant_type: 'authorization_code',
-      }
+      params,
+      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
     );
 
     const { id_token } = tokenResponse.data;

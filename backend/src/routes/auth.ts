@@ -47,12 +47,14 @@ router.post('/login', async (req: express.Request, res: express.Response) => {
         isChild: user.isChild,
       },
     });
-  } catch (error) {
-    console.error('Login error:', error);
+  } catch (error: any) {
+    const googleError = error?.response?.data;
+    console.error('Login error - Google response:', JSON.stringify(googleError));
+    console.error('Login error - Full:', error?.message);
     res.status(401).json({
       error: {
         code: 'AUTHENTICATION_FAILED',
-        message: 'Failed to authenticate with Google',
+        message: googleError?.error_description || googleError?.error || 'Failed to authenticate with Google',
       },
     });
   }
