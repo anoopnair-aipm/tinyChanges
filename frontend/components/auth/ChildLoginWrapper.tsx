@@ -32,7 +32,7 @@ function ChildLoginContent() {
     setError(null);
 
     try {
-      const response = await apiClient.post('/api/auth/child-login', { code });
+      const response = await apiClient.post('/api/auth/login', { code });
       const { token, user: userData } = response.data;
 
       localStorage.setItem('token', token);
