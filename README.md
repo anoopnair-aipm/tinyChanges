@@ -3,7 +3,15 @@
 A parent-child task management platform where parents assign tasks with rewards, and children track progress and earn achievements.
 
 **Target Age**: 5-12 years old  
-**Status**: MVP Development
+**Status**: ✅ MVP Complete & Live in Production
+
+## 🌐 Live Application
+
+**👉 [Visit tinyChanges](https://tiny-changes-frontend-kfxe.vercel.app)**
+
+- **Frontend**: https://tiny-changes-frontend-kfxe.vercel.app
+- **Backend API**: https://tinychanges-api-production.up.railway.app
+- **Database**: PostgreSQL on Railway
 
 ## 🎮 Features (MVP)
 
@@ -91,7 +99,28 @@ Visit `http://localhost:3000` for the frontend and `http://localhost:5000` for t
 - [Database Schema](./docs/DATABASE.md)
 - [API Documentation](./docs/API.md)
 - [Development Guide](./docs/DEVELOPMENT.md)
-- [Deployment Guide](./docs/DEPLOYMENT.md)
+- [Production Deployment Guide](./DEPLOYMENT.md) ← **How it's deployed**
+
+## 🎉 What's Included
+
+### Phase 1: Authentication ✅
+- Google OAuth login for parents and children
+- Secure token-based authentication
+- User profile management
+
+### Phase 2: Task Management ✅
+- Create, edit, delete tasks with deadlines
+- Priority levels (low, medium, high)
+- Task status tracking (pending, completed, expired)
+- Deadline validation for reward eligibility
+- Optional completion notes
+
+### Phase 3: Reward System ✅
+- Custom reward creation by parents
+- Point-based reward earning
+- Automatic reward balance tracking
+- Child reward redemption
+- Real-time balance updates
 
 ## 🔐 Security & Privacy
 
