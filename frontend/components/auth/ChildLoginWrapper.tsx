@@ -51,11 +51,11 @@ function ChildLoginContent() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 flex items-center justify-center px-4">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-2xl p-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-100 via-pink-100 to-rose-100 flex items-center justify-center px-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-2xl p-8 border-t-4 border-pink-500">
         <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">👶 tinyChanges</h1>
-          <p className="text-gray-600">Child Account Login</p>
+          <h1 className="text-4xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-600 to-rose-600 mb-2">👶 tinyChanges</h1>
+          <p className="text-gray-600 font-medium">Child Account Login</p>
         </div>
 
         {error && (
@@ -88,7 +88,7 @@ function ChildLoginContent() {
 
           <Link
             href="/login"
-            className="w-full text-center px-6 py-3 bg-blue-100 text-blue-700 font-semibold rounded-lg hover:bg-blue-200 transition"
+            className="w-full text-center px-6 py-3 bg-gradient-to-r from-blue-100 to-cyan-100 text-blue-700 font-semibold rounded-lg hover:from-blue-200 hover:to-cyan-200 transition border border-blue-300"
           >
             👨‍👩‍👧 Parent Login
           </Link>
