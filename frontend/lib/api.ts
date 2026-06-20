@@ -23,8 +23,11 @@ apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token expired, redirect to login
-      if (typeof window !== 'undefined') {
+      // Only redirect to login if it's NOT the auth endpoint itself
+      // (auth endpoints return 401 for invalid credentials, not expired sessions)
+      const isAuthEndpoint = error.config?.url?.includes('/api/auth/login') ||
+                             error.config?.url?.includes('/api/auth/child-login');
+      if (!isAuthEndpoint && typeof window !== 'undefined') {
         localStorage.removeItem('token');
         window.location.href = '/login';
       }
