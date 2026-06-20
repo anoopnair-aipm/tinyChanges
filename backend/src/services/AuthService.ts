@@ -1,12 +1,6 @@
-import axios from 'axios';
 import jwt from 'jsonwebtoken';
+import { OAuth2Client } from 'google-auth-library';
 import { UserModel, User } from '../models/User';
-
-interface GoogleTokenResponse {
-  access_token: string;
-  id_token: string;
-  expires_in: number;
-}
 
 interface GoogleUserInfo {
   sub: string;
@@ -17,27 +11,24 @@ interface GoogleUserInfo {
 
 export class AuthService {
   static async verifyGoogleToken(code: string): Promise<GoogleUserInfo> {
-    // Google requires application/x-www-form-urlencoded, not JSON
-    const params = new URLSearchParams({
-      code,
-      client_id: process.env.GOOGLE_CLIENT_ID || '',
-      client_secret: process.env.GOOGLE_CLIENT_SECRET || '',
-      redirect_uri: `${process.env.FRONTEND_URL}/api/auth/callback`,
-      grant_type: 'authorization_code',
-    });
+    const redirectUri = `${process.env.FRONTEND_URL}/api/auth/callback`;
+    console.log('Google token exchange - redirect_uri:', redirectUri);
 
-    console.log('Google token exchange - redirect_uri:', `${process.env.FRONTEND_URL}/api/auth/callback`);
-
-    const tokenResponse = await axios.post<GoogleTokenResponse>(
-      'https://oauth2.googleapis.com/token',
-      params,
-      { headers: { 'Content-Type': 'application/x-www-form-urlencoded' } }
+    const oauth2Client = new OAuth2Client(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET,
+      redirectUri
     );
 
-    const { id_token } = tokenResponse.data;
+    const { tokens } = await oauth2Client.getToken(code);
+    const idToken = tokens.id_token;
 
-    // Verify and decode the JWT
-    const decoded = jwt.decode(id_token) as GoogleUserInfo;
+    if (!idToken) {
+      throw new Error('No id_token returned from Google');
+    }
+
+    // Decode the JWT (already verified by google-auth-library)
+    const decoded = jwt.decode(idToken) as GoogleUserInfo;
     if (!decoded) {
       throw new Error('Invalid token');
     }
