@@ -246,32 +246,4 @@ router.get('/children', authMiddleware, async (req: AuthRequest, res: express.Re
   }
 });
 
-// POST /api/auth/test-seed — E2E test endpoint: creates a real user & returns valid JWT
-// Protected by a test secret header. Remove after testing is complete.
-router.post('/test-seed', async (req: express.Request, res: express.Response) => {
-  const testSecret = req.headers['x-test-secret'];
-  if (testSecret !== 'tinychanges-e2e-test-2026') {
-    return res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Invalid test secret' } });
-  }
-
-  try {
-    const googleId = `test_parent_${Date.now()}`;
-    const email = `testparent_${Date.now()}@test-e2e.com`;
-
-    // Create a real parent user in the database
-    const user = await UserModel.create(googleId, email, 'Test Parent User', undefined, false);
-
-    // Generate a real JWT using the server's own JWT_SECRET
-    const token = AuthService.generateToken(user);
-
-    res.json({
-      message: 'Test user created successfully',
-      token,
-      user: { id: user.id, email: user.email, name: user.name, isChild: user.isChild },
-    });
-  } catch (error: any) {
-    res.status(500).json({ error: { code: 'SEED_FAILED', message: error.message } });
-  }
-});
-
 export default router;
