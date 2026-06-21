@@ -1,12 +1,27 @@
 # Database Schema
 
-## Tables Overview
+PostgreSQL is used in production (managed by Railway). The schema is applied automatically at server startup — no manual migration commands are needed.
+
+## Auto-Migration
+
+The backend's `src/index.ts` runs schema SQL against the database before the Express server begins accepting requests. All `CREATE TABLE` statements use `IF NOT EXISTS`, so they are safe to run on every boot. This means:
+
+- On a fresh Railway PostgreSQL instance, the schema is created on first deploy
+- On subsequent deploys, existing tables are left intact
+- No `npm run db:migrate` command is needed in production
+
+For local development, the same auto-migration runs when you start the backend with `npm run dev`.
+
+---
+
+## Tables
 
 ### users
-Primary table for both parents and children.
+
+Primary table for both parent and child accounts.
 
 ```sql
-CREATE TABLE users (
+CREATE TABLE IF NOT EXISTS users (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   google_id VARCHAR(255) UNIQUE NOT NULL,
   email VARCHAR(255) UNIQUE NOT NULL,
@@ -19,15 +34,18 @@ CREATE TABLE users (
 );
 ```
 
-**Key Relationships**:
-- `parent_id` links child accounts to their parent
-- `is_child` flag differentiates parent/child accounts
+**Key fields**:
+- `is_child`: `false` for parents, `true` for children
+- `parent_id`: `NULL` for parents; references the parent's `id` for children
+
+---
 
 ### tasks
+
 Task assignments created by parents for their children.
 
 ```sql
-CREATE TABLE tasks (
+CREATE TABLE IF NOT EXISTS tasks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   parent_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   child_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -38,20 +56,21 @@ CREATE TABLE tasks (
   priority VARCHAR(50) DEFAULT 'medium',
   status VARCHAR(50) DEFAULT 'pending',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  
-  CONSTRAINT fk_child_belongs_to_parent 
-    CHECK ((SELECT parent_id FROM users WHERE id = child_id) = parent_id)
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 ```
 
-**Statuses**: `pending`, `completed`, `expired`
+**priority values**: `low`, `medium`, `high`
+**status values**: `pending`, `completed`, `expired`
+
+---
 
 ### task_completions
-Record of task completions with timestamps.
+
+One record per task completion.
 
 ```sql
-CREATE TABLE task_completions (
+CREATE TABLE IF NOT EXISTS task_completions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   task_id UUID NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
   child_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
@@ -61,11 +80,14 @@ CREATE TABLE task_completions (
 );
 ```
 
+---
+
 ### rewards
-Parent-managed reward list.
+
+Parent-managed list of rewards that can be earned by children.
 
 ```sql
-CREATE TABLE rewards (
+CREATE TABLE IF NOT EXISTS rewards (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   parent_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   name VARCHAR(255) NOT NULL,
@@ -78,27 +100,32 @@ CREATE TABLE rewards (
 );
 ```
 
+---
+
 ### reward_balances
-Tracks earned rewards per child.
+
+Tracks how many of each reward each child has earned.
 
 ```sql
-CREATE TABLE reward_balances (
+CREATE TABLE IF NOT EXISTS reward_balances (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   child_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   reward_id UUID NOT NULL REFERENCES rewards(id) ON DELETE CASCADE,
   balance INT DEFAULT 0,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  
   UNIQUE(child_id, reward_id)
 );
 ```
 
+---
+
 ### reward_redemptions
-Record of reward redemptions.
+
+Audit log of every time a child redeems a reward.
 
 ```sql
-CREATE TABLE reward_redemptions (
+CREATE TABLE IF NOT EXISTS reward_redemptions (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   child_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   reward_id UUID NOT NULL REFERENCES rewards(id) ON DELETE CASCADE,
@@ -109,11 +136,14 @@ CREATE TABLE reward_redemptions (
 );
 ```
 
+---
+
 ### notifications
+
 In-app notifications for parents and children.
 
 ```sql
-CREATE TABLE notifications (
+CREATE TABLE IF NOT EXISTS notifications (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   type VARCHAR(100) NOT NULL,
@@ -127,41 +157,52 @@ CREATE TABLE notifications (
 );
 ```
 
-**Types**: `task_completed`, `reward_earned`, `deadline_approaching`, `reward_redeemed`
+**type values**: `task_completed`, `reward_earned`, `deadline_approaching`, `reward_redeemed`
 
-## Indexes for Performance
+---
+
+## Indexes
 
 ```sql
-CREATE INDEX idx_users_google_id ON users(google_id);
-CREATE INDEX idx_users_parent_id ON users(parent_id);
-CREATE INDEX idx_tasks_parent_id ON tasks(parent_id);
-CREATE INDEX idx_tasks_child_id ON tasks(child_id);
-CREATE INDEX idx_tasks_due_date ON tasks(due_date);
-CREATE INDEX idx_task_completions_child_id ON task_completions(child_id);
-CREATE INDEX idx_task_completions_task_id ON task_completions(task_id);
-CREATE INDEX idx_rewards_parent_id ON rewards(parent_id);
-CREATE INDEX idx_reward_balances_child_id ON reward_balances(child_id);
-CREATE INDEX idx_reward_redemptions_child_id ON reward_redemptions(child_id);
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX idx_notifications_created_at ON notifications(created_at);
+CREATE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);
+CREATE INDEX IF NOT EXISTS idx_users_parent_id ON users(parent_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_parent_id ON tasks(parent_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_child_id ON tasks(child_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
+CREATE INDEX IF NOT EXISTS idx_task_completions_child_id ON task_completions(child_id);
+CREATE INDEX IF NOT EXISTS idx_task_completions_task_id ON task_completions(task_id);
+CREATE INDEX IF NOT EXISTS idx_rewards_parent_id ON rewards(parent_id);
+CREATE INDEX IF NOT EXISTS idx_reward_balances_child_id ON reward_balances(child_id);
+CREATE INDEX IF NOT EXISTS idx_reward_redemptions_child_id ON reward_redemptions(child_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
 ```
 
-## Data Constraints & Validation
+---
 
-1. **Parent-Child Relationship**: Tasks can only be assigned to direct children
-2. **Due Date**: Must be in the future when created
-3. **Reward Points**: Must be positive integers
-4. **Redemption**: Child must have earned reward before redeeming
-5. **Completion**: Tasks can only be marked complete after creation, before expiry
+## Data Constraints
 
-## Migrations
+1. A task's `child_id` must reference a child whose `parent_id` matches the task's `parent_id` (enforced in application logic)
+2. `rewards.points_value` must be a positive integer (enforced at the controller layer)
+3. A child can only redeem a reward if their `reward_balances.balance` is greater than zero
+4. Tasks can only be marked complete when their `status` is `pending`
 
-Database migrations will be version-controlled in the `backend/migrations/` directory using a migration tool (e.g., Knex.js, TypeORM).
+---
+
+## Entity Relationships
 
 ```
-backend/
-└── migrations/
-    ├── 001_initial_schema.sql
-    ├── 002_add_indexes.sql
-    └── 003_add_notifications.sql
+users (parent, is_child=false)
+└── users (children, is_child=true, parent_id=parent.id)
+    ├── tasks (child_id → child, parent_id → parent)
+    │   └── task_completions (task_id → task, child_id → child)
+    ├── reward_balances (child_id → child, reward_id → reward)
+    └── reward_redemptions (child_id → child, reward_id → reward)
+
+users (parent)
+└── rewards (parent_id → parent)
+    └── tasks (reward_id → reward, optional link)
+
+users (any)
+└── notifications (user_id → user)
 ```

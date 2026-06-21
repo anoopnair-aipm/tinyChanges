@@ -1,142 +1,147 @@
-# tinyChanges 🎯
+# tinyChanges
 
 A parent-child task management platform where parents assign tasks with rewards, and children track progress and earn achievements.
 
-**Target Age**: 5-12 years old  
-**Status**: ✅ MVP Complete & Live in Production
+**Target Age**: 5-12 years old
+**Status**: MVP complete and live in production
 
-## 🌐 Live Application
+## Live Application
 
-**👉 [Visit tinyChanges](https://tiny-changes-frontend-kfxe.vercel.app)** ← Ready to use!
+**Visit tinyChanges: https://tiny-changes-frontend-kfxe.vercel.app**
 
 | Component | URL | Status |
 |-----------|-----|--------|
-| **Frontend** | https://tiny-changes-frontend-kfxe.vercel.app | ✅ Live |
-| **Backend API** | https://tinychanges-api-production.up.railway.app | ✅ Live |
-| **Database** | PostgreSQL on Railway | ✅ Connected |
+| Frontend | https://tiny-changes-frontend-kfxe.vercel.app | Live |
+| Backend API | https://tinychanges-api-production.up.railway.app | Live |
+| Database | PostgreSQL on Railway | Connected |
 
-**All systems operational! See [TEST_RESULTS.md](./TEST_RESULTS.md) for detailed verification.**
+All systems operational. See [TEST_RESULTS.md](./TEST_RESULTS.md) for detailed verification results.
 
-## 🎮 Features (MVP)
+## Features (MVP)
 
 ### Parent Features
-- **Profile Management**: Create account with Google OAuth
-- **Child Management**: Add multiple children to their account
-- **Task Management**: Create, edit, delete tasks with deadlines
-- **Reward System**: Create and manage a custom reward list
-- **Dashboard**: View child progress, task completion status, reward balances
-- **Notifications**: Real-time updates on child activities
+- Google OAuth account creation and login
+- Add multiple children to your account
+- Create, edit, and delete tasks with deadlines and priority levels
+- Create and manage a custom reward list
+- Dashboard showing child progress and task completion status
 
 ### Child Features
-- **Profile Management**: Google OAuth login
-- **Task View**: See assigned tasks with deadlines and rewards
-- **Task Completion**: Mark tasks as complete with optional notes
-- **Reward Tracking**: View earned rewards and redemption status
-- **Gamification**: Visual progress indicators and achievement badges
+- Google OAuth login (separate flow from parent)
+- View assigned tasks with deadlines
+- Mark tasks as complete with optional notes
+- View earned reward balance
+- Redeem rewards
 
-## 🏗️ Tech Stack
+## Tech Stack
 
 | Layer | Technology |
 |-------|-----------|
-| **Frontend** | Next.js 14+ (TypeScript, Tailwind CSS) |
-| **Backend** | Node.js/Express (TypeScript) |
-| **Database** | PostgreSQL |
-| **Authentication** | Google OAuth 2.0 |
-| **Deployment** | Docker + AWS/Vercel |
+| Frontend | Next.js 14, TypeScript, Tailwind CSS |
+| State Management | Zustand |
+| Backend | Node.js/Express, TypeScript |
+| Database | PostgreSQL (node-postgres / pg) |
+| Authentication | Google OAuth 2.0, google-auth-library, JWT |
+| Frontend Hosting | Vercel |
+| Backend + DB Hosting | Railway |
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 tinyChanges/
-├── frontend/               # Next.js application
-│   ├── app/              # App router pages
-│   ├── components/       # Reusable React components
-│   ├── lib/             # Utilities and helpers
-│   └── public/          # Static assets
-├── backend/              # Node.js/Express API
+├── frontend/               # Next.js 14 application
+│   ├── app/                # App router pages and layouts
+│   ├── components/         # Reusable React components
+│   ├── lib/                # API client, Zustand store, hooks
+│   └── public/             # Static assets
+├── backend/                # Node.js/Express API
 │   ├── src/
-│   │   ├── controllers/
-│   │   ├── models/
-│   │   ├── routes/
-│   │   ├── middleware/
-│   │   └── utils/
-│   └── tests/
-├── docker-compose.yml    # Local development setup
-├── .github/              # GitHub Actions workflows
-├── docs/                 # Architecture and guides
+│   │   ├── controllers/    # Route handlers
+│   │   ├── routes/         # API route definitions
+│   │   ├── middleware/     # Auth, validation, error handling
+│   │   ├── database/       # Database connection and migrations
+│   │   └── index.ts        # Express server entry point
+│   └── tests/              # Jest test suites
+├── docs/                   # Architecture, API, and guides
+├── docker-compose.yml      # Local PostgreSQL setup
 └── README.md
 ```
 
-## 🚀 Quick Start
+## Screenshots
+
+<!-- Add screenshots here once the UI is finalized. Suggested shots:
+     - Landing page
+     - Parent dashboard
+     - Task creation form
+     - Child dashboard with task list
+     - Reward redemption view
+-->
+
+## Quick Start (Local Development)
 
 ### Prerequisites
+
 - Node.js 18+
-- Docker & Docker Compose (for local development)
+- Docker (for local PostgreSQL)
 - Google OAuth credentials
 
-### Development Setup
+### Setup
 
 ```bash
 # Clone the repo
 git clone https://github.com/anoopnair-aipm/tinyChanges.git
 cd tinyChanges
 
-# Start development stack
-docker-compose up -d
+# Start local PostgreSQL
+docker-compose up -d postgres
 
-# Backend setup
+# Backend
 cd backend
 npm install
-npm run dev
+cp .env.example .env.local   # then fill in credentials
+npm run dev                   # runs on http://localhost:5000
 
-# Frontend setup (in new terminal)
+# Frontend (new terminal)
 cd frontend
 npm install
-npm run dev
+cp .env.example .env.local   # then fill in credentials
+npm run dev                   # runs on http://localhost:3000
 ```
 
-Visit `http://localhost:3000` for the frontend and `http://localhost:5000` for the API.
+See [docs/DEVELOPMENT.md](./docs/DEVELOPMENT.md) for full setup details including Google OAuth configuration.
 
-## 📚 Documentation
+## Documentation
 
 - [Architecture Overview](./docs/ARCHITECTURE.md)
 - [Database Schema](./docs/DATABASE.md)
 - [API Documentation](./docs/API.md)
 - [Development Guide](./docs/DEVELOPMENT.md)
-- [Production Deployment Guide](./DEPLOYMENT.md) ← **How it's deployed**
+- [Deployment Guide](./docs/DEPLOYMENT.md)
+- [Test Results](./TEST_RESULTS.md)
 
-## 🎉 What's Included
+## Authentication Flow
 
-### Phase 1: Authentication ✅
-- Google OAuth login for parents and children
-- Secure token-based authentication
-- User profile management
+1. User clicks "Sign in with Google"
+2. Frontend redirects to Google OAuth consent screen
+3. Google redirects back to `/api/auth/callback?code=xxx`
+4. Frontend sends the code to `POST /api/auth/login` (or `/api/auth/child-login`)
+5. Backend uses `google-auth-library` `OAuth2Client.getToken(code)` to exchange code for tokens
+6. Backend decodes the `id_token`, finds or creates the user in the database
+7. Backend issues a JWT
+8. Frontend stores the JWT in localStorage and redirects to the appropriate dashboard
 
-### Phase 2: Task Management ✅
-- Create, edit, delete tasks with deadlines
-- Priority levels (low, medium, high)
-- Task status tracking (pending, completed, expired)
-- Deadline validation for reward eligibility
-- Optional completion notes
+## Security
 
-### Phase 3: Reward System ✅
-- Custom reward creation by parents
-- Point-based reward earning
-- Automatic reward balance tracking
-- Child reward redemption
-- Real-time balance updates
+- Google OAuth 2.0 — no passwords stored
+- JWT tokens for API authorization
+- Parameterized queries — SQL injection prevention
+- Role-based access control (parent vs. child)
+- HTTPS in production (enforced by Vercel and Railway)
 
-## 🔐 Security & Privacy
+## License
 
-- All credentials stored securely (environment variables)
-- Google OAuth for authentication (no password storage)
-- Parental controls ensure child data privacy
-- GDPR-compliant data handling
+MIT License — see LICENSE file.
 
-## 📝 License
-
-MIT License - See LICENSE file
-
-## 👥 Contributing
+## Contributing
 
 See [CONTRIBUTING.md](./CONTRIBUTING.md) for guidelines.

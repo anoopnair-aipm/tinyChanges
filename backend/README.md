@@ -1,33 +1,33 @@
-# tinyChanges API Backend
+# tinyChanges — Backend
 
-Node.js/Express backend for the tinyChanges platform.
+Node.js/Express API server for the tinyChanges platform.
 
-## Quick Start
+**Production URL**: https://tinychanges-api-production.up.railway.app
+**Deployed on**: Railway (Docker, auto-deploys from `main`)
+
+## Quick Start (Local Dev)
 
 ```bash
-# Install dependencies
+cd backend
 npm install
-
-# Set up environment
-cp .env.example .env.local
-# Edit .env.local with your credentials
-
-# Run database migrations
-npm run db:migrate
-
-# Start development server
-npm run dev
+cp .env.example .env.local   # fill in credentials
+npm run dev                   # starts on http://localhost:5000
 ```
 
-Server runs on `http://localhost:5000`
+Database tables are created automatically on startup — no migration commands needed.
 
-## Development
+See [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md) for full local setup including PostgreSQL and Google OAuth.
+
+## Scripts
 
 ```bash
+npm run dev         # Start with ts-node-dev (hot-reload)
+npm run build       # Compile TypeScript
+npm run start       # Run compiled output
 npm run lint        # Check code style
-npm run lint:fix    # Auto-fix issues
-npm run format      # Format code
-npm run test        # Run tests
+npm run lint:fix    # Auto-fix lint issues
+npm run format      # Prettier format
+npm run test        # Run Jest tests
 npm run test:watch  # Watch mode
 ```
 
@@ -36,30 +36,23 @@ npm run test:watch  # Watch mode
 ```
 src/
 ├── controllers/     # Route handlers
-├── models/          # Database models
-├── routes/          # API routes
-├── middleware/      # Express middleware
-├── services/        # Business logic
-├── types/           # TypeScript types
-├── database/        # Database utilities
-└── index.ts         # Entry point
+├── routes/          # API route definitions
+├── middleware/      # JWT auth, role checks, error handling
+├── database/        # pg connection pool and migration runner
+├── types/           # TypeScript interfaces
+└── index.ts         # Express server entry point (runs migrations on start)
 ```
 
-## API Documentation
+## Key Libraries
 
-See [docs/API.md](../docs/API.md) for complete API documentation.
+- `express` — HTTP server
+- `pg` — PostgreSQL client (parameterized queries)
+- `google-auth-library` — Google OAuth code exchange
+- `jsonwebtoken` — JWT signing and verification
 
-## Database
+## Documentation
 
-PostgreSQL is required. For local development, use Docker Compose:
-
-```bash
-docker-compose up postgres
-```
-
-Migrations:
-```bash
-npm run db:migrate       # Apply migrations
-npm run db:rollback     # Revert last migration
-npm run db:migrate:create -- --name migration_name
-```
+- [API Reference](../docs/API.md)
+- [Architecture](../docs/ARCHITECTURE.md)
+- [Database Schema](../docs/DATABASE.md)
+- [Deployment Guide](../docs/DEPLOYMENT.md)

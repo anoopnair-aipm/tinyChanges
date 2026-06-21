@@ -1,21 +1,48 @@
 # API Documentation
 
-Base URL: `https://api.tinychanges.com` (production) or `http://localhost:5000` (development)
+**Base URL (production)**: `https://tinychanges-api-production.up.railway.app`
+**Base URL (local dev)**: `http://localhost:5000`
 
 ## Authentication
 
-All endpoints require a Bearer token obtained from Google OAuth. Include in request headers:
+Protected endpoints require a JWT issued by the backend after Google OAuth login. Pass it as a Bearer token:
 
 ```
-Authorization: Bearer {google_oauth_token}
+Authorization: Bearer <jwt_token>
 ```
 
-## Endpoints
+Tokens are obtained from `POST /api/auth/login` or `POST /api/auth/child-login`.
 
-### Auth Endpoints
+---
 
-#### POST /api/auth/login
-Google OAuth login callback.
+## Public Endpoints
+
+### GET /api/health
+
+Health check. Returns server and database status.
+
+**Response (200)**:
+```json
+{
+  "status": "ok",
+  "database": "connected",
+  "timestamp": "2026-06-20T19:58:01.545Z"
+}
+```
+
+---
+
+### GET /api
+
+Returns API info.
+
+**Response (200)**: API description object.
+
+---
+
+### POST /api/auth/login
+
+Parent Google OAuth login. Exchange the authorization code received from Google for a JWT.
 
 **Request**:
 ```json
@@ -24,122 +51,191 @@ Google OAuth login callback.
 }
 ```
 
-**Response** (200):
+**Response (200)**:
 ```json
 {
-  "token": "jwt_token",
+  "token": "eyJhbGciOiJIUzI1NiIs...",
   "user": {
-    "id": "uuid",
-    "email": "user@example.com",
-    "name": "John Doe",
+    "id": "bbba15cb-624f-446b-bf7d-6ec09ed3f36b",
+    "email": "parent@example.com",
+    "name": "Jane Doe",
     "isChild": false
   }
 }
 ```
 
-#### POST /api/auth/logout
-Logout current user.
+---
 
-### User Endpoints
+### POST /api/auth/child-login
 
-#### GET /api/users/profile
-Get current user profile.
+Child Google OAuth login. Same flow as parent login but creates/fetches a child account.
 
-**Response** (200):
+**Request**:
+```json
+{
+  "code": "authorization_code_from_google"
+}
+```
+
+**Response (200)**:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "user": {
+    "id": "uuid",
+    "email": "child@example.com",
+    "name": "Tommy",
+    "isChild": true
+  }
+}
+```
+
+---
+
+## Auth Endpoints (requires JWT)
+
+### GET /api/auth/profile
+
+Returns the profile of the currently authenticated user.
+
+**Response (200)**:
 ```json
 {
   "id": "uuid",
   "email": "parent@example.com",
   "name": "Jane Doe",
-  "profilePictureUrl": "https://...",
+  "profilePictureUrl": "https://lh3.googleusercontent.com/...",
   "isChild": false,
-  "children": [
-    {
-      "id": "uuid",
-      "name": "Child Name",
-      "email": "child@example.com"
-    }
-  ]
+  "createdAt": "2026-06-20T10:00:00.000Z"
 }
 ```
 
-#### POST /api/users/children
-Add a child to parent's account.
+---
+
+### POST /api/auth/add-child
+
+Add a child account to the parent's account. The child must first sign in via `POST /api/auth/child-login` so their account exists.
 
 **Request**:
 ```json
 {
   "name": "Tommy",
-  "childEmail": "tommy@example.com"
+  "email": "tommy@example.com"
 }
 ```
 
-**Response** (201): Child object
+**Response (201)**: Child user object.
 
-#### GET /api/users/children
-Get all children of current parent.
+---
 
-**Response** (200): Array of child objects
+### GET /api/auth/children
 
-#### DELETE /api/users/children/{childId}
-Remove a child from parent's account.
+List all children linked to the authenticated parent.
 
-### Task Endpoints
+**Response (200)**:
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Tommy",
+    "email": "tommy@example.com",
+    "profilePictureUrl": "https://..."
+  }
+]
+```
 
-#### POST /api/tasks
-Create a new task (parent only).
+---
+
+## Task Endpoints (requires JWT)
+
+### POST /api/tasks
+
+Create a new task. Parent only.
 
 **Request**:
 ```json
 {
-  "childId": "uuid",
   "title": "Clean your room",
   "description": "Tidy up toys and organize books",
+  "childId": "uuid",
   "dueDate": "2026-06-30T18:00:00Z",
   "rewardId": "uuid",
   "priority": "high"
 }
 ```
 
-**Response** (201): Task object
+- `priority`: `"low"`, `"medium"`, or `"high"` (default: `"medium"`)
+- `rewardId`: optional — links a reward to this task
+- `description`: optional
 
-#### GET /api/tasks
-List tasks for current user.
+**Response (201)**: Task object.
 
-**Query parameters**:
-- `childId` (parent): filter by child
-- `status` (both): `pending`, `completed`, `expired`
-- `limit` (both): default 20, max 100
-- `offset` (both): default 0
+---
 
-**Response** (200): Array of task objects
+### GET /api/tasks
 
-#### GET /api/tasks/{taskId}
-Get single task details.
+List tasks. Parents see all tasks for their children. Children see only their own tasks.
 
-**Response** (200): Task object with completion history
+**Response (200)**:
+```json
+[
+  {
+    "id": "uuid",
+    "title": "Clean your room",
+    "description": "Tidy up toys and organize books",
+    "childId": "uuid",
+    "parentId": "uuid",
+    "dueDate": "2026-06-30T18:00:00Z",
+    "priority": "high",
+    "status": "pending",
+    "rewardId": "uuid",
+    "createdAt": "2026-06-20T10:00:00.000Z"
+  }
+]
+```
 
-#### PATCH /api/tasks/{taskId}
-Update a task (parent only).
+**Task statuses**: `pending`, `completed`, `expired`
 
-**Request**:
+---
+
+### GET /api/tasks/:taskId
+
+Get a single task by ID.
+
+**Response (200)**: Task object (same shape as above).
+
+---
+
+### PATCH /api/tasks/:taskId
+
+Update a task. Parent only.
+
+**Request** (all fields optional):
 ```json
 {
   "title": "Updated title",
+  "description": "Updated description",
   "dueDate": "2026-07-01T18:00:00Z",
-  "priority": "medium"
+  "priority": "medium",
+  "rewardId": "uuid"
 }
 ```
 
-**Response** (200): Updated task object
+**Response (200)**: Updated task object.
 
-#### DELETE /api/tasks/{taskId}
-Delete a task (parent only).
+---
 
-**Response** (204): No content
+### DELETE /api/tasks/:taskId
 
-#### POST /api/tasks/{taskId}/complete
-Mark task as complete (child only).
+Delete a task. Parent only.
+
+**Response (204)**: No content.
+
+---
+
+### POST /api/tasks/:taskId/complete
+
+Mark a task as complete. Child only.
 
 **Request**:
 ```json
@@ -148,7 +244,9 @@ Mark task as complete (child only).
 }
 ```
 
-**Response** (200):
+- `notes`: optional
+
+**Response (200)**:
 ```json
 {
   "taskId": "uuid",
@@ -161,10 +259,15 @@ Mark task as complete (child only).
 }
 ```
 
-### Reward Endpoints
+`rewardEarned` is `null` if no reward was linked to the task.
 
-#### POST /api/rewards
-Create a new reward (parent only).
+---
+
+## Reward Endpoints (requires JWT)
+
+### POST /api/rewards
+
+Create a new reward. Parent only.
 
 **Request**:
 ```json
@@ -177,35 +280,75 @@ Create a new reward (parent only).
 }
 ```
 
-**Response** (201): Reward object
+- `description`, `icon`, `color`: optional
+- `pointsValue`: positive integer
 
-#### GET /api/rewards
-List rewards for current user's account.
+**Response (201)**: Reward object.
 
-**Response** (200): Array of reward objects
+---
 
-#### PATCH /api/rewards/{rewardId}
-Update a reward (parent only).
+### GET /api/rewards
 
-**Request**:
+List rewards for the authenticated parent's account.
+
+**Response (200)**:
+```json
+[
+  {
+    "id": "uuid",
+    "name": "Extra screen time",
+    "description": "30 minutes of gaming",
+    "pointsValue": 15,
+    "icon": "gamepad",
+    "color": "#FF6B6B",
+    "parentId": "uuid",
+    "createdAt": "2026-06-20T10:00:00.000Z"
+  }
+]
+```
+
+---
+
+### GET /api/rewards/:rewardId
+
+Get a single reward by ID.
+
+**Response (200)**: Reward object.
+
+---
+
+### PATCH /api/rewards/:rewardId
+
+Update a reward. Parent only.
+
+**Request** (all fields optional):
 ```json
 {
-  "name": "Updated reward name",
-  "pointsValue": 20
+  "name": "Updated name",
+  "description": "Updated description",
+  "pointsValue": 20,
+  "icon": "star",
+  "color": "#FFD700"
 }
 ```
 
-**Response** (200): Updated reward object
+**Response (200)**: Updated reward object.
 
-#### DELETE /api/rewards/{rewardId}
-Delete a reward (parent only).
+---
 
-**Response** (204): No content
+### DELETE /api/rewards/:rewardId
 
-#### GET /api/rewards/balance
-Get reward balance for current user (child only).
+Delete a reward. Parent only.
 
-**Response** (200):
+**Response (204)**: No content.
+
+---
+
+### GET /api/rewards/balance/:childId
+
+Get a child's current reward balance. Accessible by the parent of that child.
+
+**Response (200)**:
 ```json
 [
   {
@@ -218,18 +361,20 @@ Get reward balance for current user (child only).
 ]
 ```
 
-#### POST /api/rewards/{rewardId}/redeem
-Redeem a reward (child only).
+---
+
+### POST /api/rewards/:rewardId/redeem
+
+Redeem a reward. Child only. The child must have sufficient balance.
 
 **Request**:
 ```json
-{
-  "quantity": 1,
-  "notes": "Redeemed for extra playtime"
-}
+{}
 ```
 
-**Response** (200):
+No body required (quantity defaults to 1).
+
+**Response (200)**:
 ```json
 {
   "redemptionId": "uuid",
@@ -238,26 +383,7 @@ Redeem a reward (child only).
 }
 ```
 
-### Notification Endpoints
-
-#### GET /api/notifications
-Get notifications for current user.
-
-**Query parameters**:
-- `unreadOnly` (both): default false
-- `limit` (both): default 20
-
-**Response** (200): Array of notification objects
-
-#### PATCH /api/notifications/{notificationId}
-Mark notification as read.
-
-**Response** (200): Updated notification object
-
-#### DELETE /api/notifications/{notificationId}
-Delete a notification.
-
-**Response** (204): No content
+---
 
 ## Error Responses
 
@@ -265,30 +391,36 @@ All errors follow this format:
 
 ```json
 {
-  "error": {
-    "code": "INVALID_REQUEST",
-    "message": "Task not found",
-    "details": {}
-  }
+  "error": "Description of what went wrong"
 }
 ```
 
-**Common Status Codes**:
-- `400`: Bad Request
-- `401`: Unauthorized
-- `403`: Forbidden
-- `404`: Not Found
-- `409`: Conflict
-- `500`: Internal Server Error
+**Common HTTP status codes**:
 
-## Rate Limiting
+| Code | Meaning |
+|------|---------|
+| 400 | Bad Request — missing or invalid fields |
+| 401 | Unauthorized — missing, invalid, or expired JWT |
+| 403 | Forbidden — authenticated but not allowed (e.g., child trying to create a task) |
+| 404 | Not Found — resource does not exist |
+| 409 | Conflict — e.g., duplicate resource |
+| 500 | Internal Server Error |
 
-- 100 requests per minute per user
-- 1000 requests per minute per IP address
+---
 
-Headers in response:
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 95
-X-RateLimit-Reset: 1624190400
-```
+## Frontend Routes (for reference)
+
+These are Next.js app router routes on the frontend, not backend API routes.
+
+| Route | Description |
+|-------|-------------|
+| `/` | Home / landing page |
+| `/login` | Parent Google OAuth login |
+| `/login/child` | Child Google OAuth login |
+| `/api/auth/callback` | OAuth callback handler (receives `?code=` from Google) |
+| `/dashboard/parent` | Parent dashboard |
+| `/dashboard/parent/child/[childId]/tasks` | View a child's tasks (parent view) |
+| `/dashboard/parent/child/[childId]/rewards` | View a child's rewards (parent view) |
+| `/dashboard/child` | Child dashboard |
+| `/dashboard/child/tasks` | Child's task list |
+| `/dashboard/child/rewards` | Child's reward view |

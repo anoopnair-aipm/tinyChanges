@@ -1,78 +1,80 @@
-# tinyChanges Web App
+# tinyChanges — Frontend
 
-Next.js frontend for the tinyChanges platform.
+Next.js 14 web application for the tinyChanges platform.
 
-## Quick Start
+**Production URL**: https://tiny-changes-frontend-kfxe.vercel.app
+**Deployed on**: Vercel (auto-deploys from `main`)
+
+## Quick Start (Local Dev)
 
 ```bash
-# Install dependencies
+cd frontend
 npm install
-
-# Set up environment
-cp .env.example .env.local
-# Edit .env.local with your credentials
-
-# Start development server
-npm run dev
+cp .env.example .env.local   # fill in credentials
+npm run dev                   # starts on http://localhost:3000
 ```
 
-App runs on `http://localhost:3000`
+See [docs/DEVELOPMENT.md](../docs/DEVELOPMENT.md) for full local setup including backend and Google OAuth.
 
-## Development
+## Scripts
 
 ```bash
+npm run dev         # Start development server (hot-reload)
+npm run build       # Production build
+npm run start       # Serve production build locally
 npm run lint        # Check code style
-npm run lint:fix    # Auto-fix issues
-npm run format      # Format code
-npm run type-check  # Check TypeScript types
+npm run lint:fix    # Auto-fix lint issues
+npm run format      # Prettier format
+npm run type-check  # TypeScript type check without building
 npm run test        # Run tests
-```
-
-## Building for Production
-
-```bash
-npm run build
-npm run start
 ```
 
 ## Project Structure
 
 ```
 app/
-├── (auth)/         # Authentication pages
-├── (dashboard)/    # Protected dashboard pages
-├── api/            # API routes
-├── layout.tsx      # Root layout
-└── page.tsx        # Home page
+├── page.tsx                    # Home / landing page
+├── login/                      # Parent Google OAuth login
+├── login/child/                # Child Google OAuth login
+├── api/auth/callback/          # OAuth callback (receives ?code= from Google)
+├── dashboard/parent/           # Parent dashboard
+├── dashboard/parent/child/[childId]/tasks/   # Child task view (parent)
+├── dashboard/parent/child/[childId]/rewards/ # Child reward view (parent)
+├── dashboard/child/            # Child dashboard
+├── dashboard/child/tasks/      # Child's task list
+└── dashboard/child/rewards/    # Child's reward view
 
 components/
-├── ui/             # Reusable UI components
-├── auth/           # Auth components
-├── tasks/          # Task components
+├── ui/             # Reusable UI primitives
+├── auth/           # Login components
+├── tasks/          # Task list and detail components
 └── rewards/        # Reward components
 
 lib/
-├── api.ts          # API client
-├── store.ts        # Zustand store
-└── hooks/          # Custom hooks
-
-public/            # Static assets
+├── api.ts          # Axios-based API client
+├── store.ts        # Zustand global state
+└── hooks/          # Custom React hooks
 ```
 
-## Features
+## Environment Variables
 
-- 🔐 Google OAuth authentication
-- 👨‍👩‍👧 Parent and child accounts
-- ✅ Task management
-- 🎁 Reward system
-- 📱 Responsive design
-- 🎨 Tailwind CSS styling
+```
+NEXT_PUBLIC_API_URL=http://localhost:5000
+NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
+```
 
-## Technologies
+In production these are set in the Vercel project dashboard.
 
-- Next.js 14
-- React 18
-- TypeScript
-- Tailwind CSS
-- Zustand (state management)
-- Axios (HTTP client)
+## Key Libraries
+
+- `next` 14 — React framework with app router
+- `tailwindcss` — Utility-first CSS
+- `zustand` — Global client-side state
+- `axios` — HTTP client for API calls
+
+## Documentation
+
+- [API Reference](../docs/API.md)
+- [Architecture](../docs/ARCHITECTURE.md)
+- [Development Guide](../docs/DEVELOPMENT.md)
+- [Deployment Guide](../docs/DEPLOYMENT.md)

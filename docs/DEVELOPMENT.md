@@ -2,107 +2,102 @@
 
 ## Prerequisites
 
-- Node.js 18+ (check with `node --version`)
-- PostgreSQL 14+ (or Docker)
-- npm or yarn package manager
-- Google OAuth credentials (setup instructions below)
+- Node.js 18+ (`node --version` to check)
+- Docker and Docker Compose (for local PostgreSQL)
+- A Google Cloud project with OAuth 2.0 credentials
 
 ## Google OAuth Setup
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
-2. Create a new project or select existing one
-3. Enable Google+ API
-4. Create OAuth 2.0 credentials:
-   - Application type: Web application
-   - Authorized redirect URIs:
-     - `http://localhost:3000/api/auth/callback`
-     - `http://localhost:3000/auth/callback`
-     - `https://yourdomain.com/api/auth/callback` (production)
-5. Copy Client ID and Client Secret
+2. Create a new project or select an existing one
+3. Navigate to **APIs & Services > Credentials**
+4. Click **Create Credentials > OAuth 2.0 Client ID**
+5. Application type: **Web application**
+6. Add authorized redirect URIs:
+   - `http://localhost:3000/api/auth/callback`
+7. Copy the **Client ID** and **Client Secret** — you will need both for local env files
 
 ## Local Development Setup
 
-### 1. Start PostgreSQL
+### 1. Start PostgreSQL with Docker
 
-Using Docker:
 ```bash
+# From the repo root
 docker-compose up -d postgres
 ```
 
-Or locally installed PostgreSQL:
-```bash
-psql -U postgres
-CREATE DATABASE tinychanges_dev;
-```
+This starts a local PostgreSQL instance on port 5432. The backend will auto-create all tables on first run.
 
 ### 2. Backend Setup
 
 ```bash
 cd backend
-
-# Install dependencies
 npm install
 
-# Create .env.local
-cat > .env.local << EOF
+# Create local env file
+cp .env.example .env.local
+```
+
+Edit `backend/.env.local`:
+```
 NODE_ENV=development
 PORT=5000
 DATABASE_URL=postgresql://tinychanges:tinychanges_dev@localhost:5432/tinychanges_dev
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
-JWT_SECRET=your_jwt_secret_key_here
+JWT_SECRET=any_long_random_string_for_local_dev
 FRONTEND_URL=http://localhost:3000
-EOF
+```
 
-# Run migrations
-npm run db:migrate
-
-# Start development server
+Start the backend:
+```bash
 npm run dev
 ```
 
-Backend will run on `http://localhost:5000`
+The backend will run on `http://localhost:5000`. On startup it will automatically create all database tables if they do not already exist.
 
 ### 3. Frontend Setup
 
+In a new terminal:
+
 ```bash
 cd frontend
-
-# Install dependencies
 npm install
 
-# Create .env.local
-cat > .env.local << EOF
+# Create local env file
+cp .env.example .env.local
+```
+
+Edit `frontend/.env.local`:
+```
 NEXT_PUBLIC_API_URL=http://localhost:5000
 NEXT_PUBLIC_GOOGLE_CLIENT_ID=your_google_client_id
-EOF
+```
 
-# Start development server
+Start the frontend:
+```bash
 npm run dev
 ```
 
-Frontend will run on `http://localhost:3000`
+The frontend will run on `http://localhost:3000`.
 
-## Project Structure Details
+## Project Structure
 
 ### Backend (`/backend`)
 
 ```
 backend/
 ├── src/
-│   ├── controllers/     # Route handlers
-│   ├── models/          # Database models/schemas
-│   ├── routes/          # API route definitions
-│   ├── middleware/      # Auth, validation, error handling
-│   ├── services/        # Business logic
-│   ├── utils/           # Helper functions
-│   ├── types/           # TypeScript types/interfaces
-│   └── index.ts         # Express app setup
-├── migrations/          # Database migrations
-├── tests/               # Unit and integration tests
-├── .env.local          # Local environment variables
-├── tsconfig.json       # TypeScript configuration
-└── package.json        # Dependencies
+│   ├── controllers/     # Route handlers (task, reward, auth logic)
+│   ├── routes/          # Express route definitions
+│   ├── middleware/      # Auth middleware (JWT verification, role checks)
+│   ├── database/        # PostgreSQL connection pool and migration runner
+│   ├── types/           # TypeScript interfaces and types
+│   └── index.ts         # Express app setup and startup (runs migrations)
+├── tests/               # Jest test suites
+├── Dockerfile           # Used by Railway for production builds
+├── tsconfig.json
+└── package.json
 ```
 
 ### Frontend (`/frontend`)
@@ -110,98 +105,92 @@ backend/
 ```
 frontend/
 ├── app/
-│   ├── (auth)/          # Auth pages (login, callback)
-│   ├── (dashboard)/     # Protected dashboard routes
-│   ├── api/             # API routes (e.g., auth callbacks)
-│   ├── layout.tsx       # Root layout
-│   └── page.tsx         # Home page
+│   ├── login/                          # Parent login page
+│   ├── login/child/                    # Child login page
+│   ├── api/auth/callback/              # OAuth callback handler
+│   ├── dashboard/parent/               # Parent dashboard
+│   ├── dashboard/parent/child/[childId]/tasks/    # Child task view
+│   ├── dashboard/parent/child/[childId]/rewards/  # Child reward view
+│   ├── dashboard/child/                # Child dashboard
+│   ├── dashboard/child/tasks/          # Child task list
+│   ├── dashboard/child/rewards/        # Child reward view
+│   ├── layout.tsx                      # Root layout
+│   └── page.tsx                        # Home / landing page
 ├── components/
-│   ├── ui/              # Reusable UI components
+│   ├── ui/              # Reusable UI primitives
 │   ├── auth/            # Authentication components
-│   ├── tasks/           # Task components
-│   ├── rewards/         # Reward components
-│   └── layouts/         # Page layouts
+│   ├── tasks/           # Task list and detail components
+│   └── rewards/         # Reward components
 ├── lib/
-│   ├── api.ts           # API client/fetch utilities
-│   ├── auth.ts          # Authentication utilities
+│   ├── api.ts           # Axios-based API client
+│   ├── store.ts         # Zustand global state
 │   └── hooks/           # Custom React hooks
 ├── public/              # Static assets
-├── .env.local          # Local environment variables
-├── next.config.js      # Next.js configuration
-└── package.json        # Dependencies
+├── next.config.js
+└── package.json
 ```
 
-## Development Workflow
+## Key Libraries
 
-### Running Tests
+| Library | Used for |
+|---------|----------|
+| `google-auth-library` | Backend: exchanging Google OAuth auth codes for tokens |
+| `jsonwebtoken` | Backend: signing and verifying JWTs |
+| `pg` (node-postgres) | Backend: PostgreSQL queries with parameterized statements |
+| `zustand` | Frontend: global client-side state (auth, tasks, rewards) |
+| `axios` | Frontend: HTTP requests to the backend API |
+
+## Running Tests
 
 ```bash
-# Backend tests
+# Backend
 cd backend
-npm run test           # Run all tests
-npm run test:watch   # Watch mode
-npm run test:coverage # Coverage report
-
-# Frontend tests
-cd frontend
-npm run test
-npm run test:watch
+npm run test            # Run all tests
+npm run test:watch      # Watch mode
+npm run test:coverage   # Coverage report
 ```
 
-### Code Style & Linting
+## Code Style and Linting
 
 ```bash
-# Both frontend and backend
-npm run lint           # Check for issues
-npm run lint:fix      # Auto-fix issues
-npm run format        # Format with Prettier
+# From either frontend/ or backend/
+npm run lint            # Check for issues
+npm run lint:fix        # Auto-fix issues
+npm run format          # Format with Prettier
 ```
 
-### Database Migrations
-
+Run lint and format before every commit:
 ```bash
-cd backend
-
-# Create a new migration
-npm run db:migrate:create -- --name add_new_table
-
-# Run pending migrations
-npm run db:migrate
-
-# Rollback last migration
-npm run db:rollback
+npm run lint:fix && npm run format
 ```
 
-### Environment Variables
+## Environment Variables Reference
 
-Create `.env.local` files (not committed to git):
+### Backend (`backend/.env.local`)
 
-**Backend** (`backend/.env.local`):
-```
-NODE_ENV=development
-PORT=5000
-DATABASE_URL=postgresql://user:password@host:5432/database
-GOOGLE_CLIENT_ID=xxx
-GOOGLE_CLIENT_SECRET=xxx
-JWT_SECRET=xxx
-FRONTEND_URL=http://localhost:3000
-ENABLE_DEBUG_LOGGING=true
-```
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NODE_ENV` | Yes | `development` locally |
+| `PORT` | No | Defaults to `5000` |
+| `DATABASE_URL` | Yes | PostgreSQL connection string |
+| `GOOGLE_CLIENT_ID` | Yes | From Google Cloud Console |
+| `GOOGLE_CLIENT_SECRET` | Yes | From Google Cloud Console |
+| `JWT_SECRET` | Yes | Any long random string locally |
+| `FRONTEND_URL` | Yes | `http://localhost:3000` locally |
 
-**Frontend** (`frontend/.env.local`):
-```
-NEXT_PUBLIC_API_URL=http://localhost:5000
-NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxx
-```
+### Frontend (`frontend/.env.local`)
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `NEXT_PUBLIC_API_URL` | Yes | `http://localhost:5000` locally |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Yes | From Google Cloud Console |
 
 ## Debugging
 
-### Backend Debugging
+### VS Code Launch Config
 
-Using VS Code debugger:
+Add to `.vscode/launch.json` to debug the backend:
 
-1. Install extension: Debugger for Chrome
-2. Add to `.vscode/launch.json`:
 ```json
 {
   "version": "0.2.0",
@@ -209,75 +198,57 @@ Using VS Code debugger:
     {
       "type": "node",
       "request": "launch",
-      "name": "Launch Backend",
-      "program": "${workspaceFolder}/backend/dist/index.js",
-      "outFiles": ["${workspaceFolder}/backend/dist/**/*.js"]
+      "name": "Debug Backend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "cwd": "${workspaceFolder}/backend",
+      "envFile": "${workspaceFolder}/backend/.env.local"
     }
   ]
 }
 ```
 
-### Frontend Debugging
+### Common Issues
 
-Chrome DevTools are built-in. Add `debugger;` statements in code or use VS Code Debugger for Chrome.
-
-## Common Issues & Solutions
-
-### Database Connection Error
+**Database connection refused**
 ```
 Error: connect ECONNREFUSED 127.0.0.1:5432
 ```
-**Solution**: Ensure PostgreSQL is running and credentials are correct
+PostgreSQL is not running. Start it with `docker-compose up -d postgres`.
 
-### Port Already in Use
+**Port already in use**
 ```
-Error: listen EADDRINUSE: address already in use :::5000
+Error: listen EADDRINUSE :::5000
 ```
-**Solution**: 
-```bash
-# Kill process on port 5000
-lsof -ti:5000 | xargs kill -9
+Kill the existing process: `lsof -ti:5000 | xargs kill -9`
 
-# Or use different port
-PORT=5001 npm run dev
-```
+**OAuth redirect URI mismatch**
+Google returns an error if the redirect URI in your request does not exactly match one of the registered URIs in Google Cloud Console. Ensure `http://localhost:3000/api/auth/callback` is listed.
 
-### OAuth Redirect URI Mismatch
-**Solution**: Ensure registered redirect URIs in Google Cloud Console match your app URLs
-
-### Module Not Found
+**Module not found**
 ```
 Error: Cannot find module 'express'
 ```
-**Solution**: 
-```bash
-npm install
-rm -rf node_modules package-lock.json
-npm install
-```
+Run `npm install` inside the relevant directory (`backend/` or `frontend/`).
 
-## Performance Optimization Tips
-
-1. **Use React DevTools Profiler** to identify slow renders
-2. **Enable database query logging** to spot N+1 queries
-3. **Implement API response caching** for frequently accessed data
-4. **Use database indexes** on frequently queried fields
-5. **Lazy load components** in frontend for better initial load
+**Tables not created**
+If the backend starts but complains about missing tables, check that `DATABASE_URL` is correct and that the backend actually connected to PostgreSQL successfully. Look for the migration log line on startup.
 
 ## Useful Commands
 
 ```bash
-# Terminal 1: Start DB and backend
+# Terminal 1: local PostgreSQL
 docker-compose up postgres
+
+# Terminal 2: backend (auto-creates tables, hot-reloads)
 cd backend && npm run dev
 
-# Terminal 2: Start frontend
+# Terminal 3: frontend
 cd frontend && npm run dev
 
-# Terminal 3: Monitor logs
-docker-compose logs -f postgres
+# Inspect local DB
+docker-compose exec postgres psql -U tinychanges -d tinychanges_dev
 
-# Reset everything (careful!)
+# Reset everything (destroys local DB data)
 docker-compose down -v
-npm run db:migrate
 ```

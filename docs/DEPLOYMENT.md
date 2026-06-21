@@ -1,326 +1,161 @@
 # Deployment Guide
 
-## Deployment Architecture
+## Current Production Stack
 
-### Recommended Stack
-- **Frontend**: Vercel (Next.js native) or AWS CloudFront + S3
-- **Backend**: AWS ECS/Fargate or Heroku
-- **Database**: AWS RDS PostgreSQL
-- **DNS**: Route 53 (AWS) or Cloudflare
+| Component | Platform | URL |
+|-----------|----------|-----|
+| Frontend | Vercel | https://tiny-changes-frontend-kfxe.vercel.app |
+| Backend API | Railway | https://tinychanges-api-production.up.railway.app |
+| Database | Railway PostgreSQL | Railway managed |
 
-## Pre-Deployment Checklist
+Auto-deployment is active: pushing to `main` deploys both frontend (Vercel) and backend (Railway) automatically.
 
-- [ ] All tests passing (`npm run test`)
-- [ ] No console errors or warnings
-- [ ] Environment variables configured
-- [ ] Database migrations up-to-date
-- [ ] SSL certificates configured
-- [ ] Backups configured
-- [ ] Monitoring/logging set up
-- [ ] Security headers configured
+---
 
-## Option 1: Vercel + AWS (Recommended)
+## How Auto-Deploy Works
 
-### Frontend Deployment (Vercel)
+**Frontend (Vercel)**:
+1. Push to `main` branch on GitHub
+2. Vercel detects the push, runs `npm run build` in the `frontend/` directory
+3. New deployment is live within ~1-2 minutes
 
-1. **Push code to GitHub**
-   ```bash
-   git add .
-   git commit -m "Initial commit"
-   git push origin main
+**Backend (Railway)**:
+1. Push to `main` branch on GitHub
+2. Railway detects the push, builds the Docker image from `backend/Dockerfile`
+3. New container is deployed; on startup, the backend auto-applies DB migrations
+4. New deployment is live within ~2-3 minutes
+
+---
+
+## Environment Variables
+
+### Backend (set in Railway service dashboard)
+
+| Variable | Description |
+|----------|-------------|
+| `NODE_ENV` | Set to `production` |
+| `PORT` | Railway sets this automatically; defaults to `5000` |
+| `DATABASE_URL` | Railway provides this automatically for linked PostgreSQL service |
+| `GOOGLE_CLIENT_ID` | From Google Cloud Console OAuth 2.0 credentials |
+| `GOOGLE_CLIENT_SECRET` | From Google Cloud Console OAuth 2.0 credentials |
+| `JWT_SECRET` | Long random string, used to sign JWTs |
+| `FRONTEND_URL` | `https://tiny-changes-frontend-kfxe.vercel.app` (used for CORS) |
+
+### Frontend (set in Vercel project settings)
+
+| Variable | Description |
+|----------|-------------|
+| `NEXT_PUBLIC_API_URL` | `https://tinychanges-api-production.up.railway.app` |
+| `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | From Google Cloud Console OAuth 2.0 credentials |
+
+---
+
+## Setting Up From Scratch
+
+Follow these steps if you need to redeploy to a new Railway or Vercel account.
+
+### Step 1: Google OAuth Credentials
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a project (or select an existing one)
+3. Navigate to **APIs & Services > Credentials**
+4. Click **Create Credentials > OAuth 2.0 Client ID**
+5. Application type: **Web application**
+6. Add authorized redirect URIs:
+   - `http://localhost:3000/api/auth/callback` (local dev)
+   - `https://<your-vercel-url>/api/auth/callback` (production)
+7. Copy the **Client ID** and **Client Secret**
+
+### Step 2: Deploy the Backend to Railway
+
+1. Go to [railway.app](https://railway.app) and log in
+2. Click **New Project > Deploy from GitHub repo**
+3. Select the `tinyChanges` repository
+4. Set the **Root Directory** to `backend`
+5. Railway will detect the `Dockerfile` and build automatically
+
+6. Add a **PostgreSQL** service to the same Railway project:
+   - Click **New Service > Database > PostgreSQL**
+   - Railway automatically sets `DATABASE_URL` in your backend service
+
+7. Add environment variables to the backend service:
+   ```
+   NODE_ENV=production
+   GOOGLE_CLIENT_ID=<from step 1>
+   GOOGLE_CLIENT_SECRET=<from step 1>
+   JWT_SECRET=<generate a long random string>
+   FRONTEND_URL=https://<your-vercel-url>
    ```
 
-2. **Connect GitHub to Vercel**
-   - Go to [Vercel Dashboard](https://vercel.com)
-   - Click "New Project"
-   - Import your GitHub repository
-   - Configure environment variables:
-     ```
-     NEXT_PUBLIC_API_URL=https://api.tinychanges.com
-     NEXT_PUBLIC_GOOGLE_CLIENT_ID=xxx
-     ```
+8. Railway will build and deploy. The backend auto-runs DB migrations on first boot — no manual commands needed.
 
-3. **Deploy**
-   - Vercel automatically deploys on push to main
-   - Preview deployments for pull requests
+9. Copy the Railway-generated public URL for your backend service (e.g., `https://tinychanges-api-production.up.railway.app`)
 
-### Backend Deployment (AWS ECS)
+### Step 3: Deploy the Frontend to Vercel
 
-1. **Create ECR Repository**
-   ```bash
-   aws ecr create-repository --repository-name tinychanges-api
+1. Go to [vercel.com](https://vercel.com) and log in
+2. Click **New Project > Import Git Repository**
+3. Select the `tinyChanges` repository
+4. Set the **Root Directory** to `frontend`
+5. Add environment variables:
    ```
-
-2. **Build and Push Docker Image**
-   ```bash
-   cd backend
-   docker build -t tinychanges-api .
-   
-   # Tag and push to ECR
-   docker tag tinychanges-api:latest 123456789.dkr.ecr.us-east-1.amazonaws.com/tinychanges-api:latest
-   docker push 123456789.dkr.ecr.us-east-1.amazonaws.com/tinychanges-api:latest
+   NEXT_PUBLIC_API_URL=https://<your-railway-backend-url>
+   NEXT_PUBLIC_GOOGLE_CLIENT_ID=<from step 1>
    ```
+6. Click **Deploy**
+7. Copy the Vercel URL (e.g., `https://tiny-changes-frontend-kfxe.vercel.app`)
 
-3. **Create ECS Task Definition**
-   - CPU: 256, Memory: 512 (adjust as needed)
-   - Environment variables:
-     ```
-     NODE_ENV=production
-     DATABASE_URL=postgresql://...
-     GOOGLE_CLIENT_ID=xxx
-     GOOGLE_CLIENT_SECRET=xxx
-     JWT_SECRET=xxx
-     FRONTEND_URL=https://tinychanges.com
-     ```
+### Step 4: Update Cross-References
 
-4. **Create ECS Service**
-   - Launch type: Fargate
-   - Desired count: 2 (high availability)
-   - Load balancer: Application Load Balancer
+1. In Railway backend service, update `FRONTEND_URL` to your Vercel URL
+2. In Google Cloud Console, ensure the Vercel URL's callback is in your authorized redirect URIs: `https://<your-vercel-url>/api/auth/callback`
+3. Redeploy the backend on Railway (or trigger via git push) so it picks up the updated `FRONTEND_URL`
 
-5. **Set up RDS Database**
-   ```bash
-   # Create RDS instance
-   aws rds create-db-instance \
-     --db-instance-identifier tinychanges-db \
-     --db-instance-class db.t3.micro \
-     --engine postgres \
-     --master-username admin \
-     --master-user-password yourpassword \
-     --allocated-storage 20 \
-     --vpc-security-group-ids sg-xxxxx
-   ```
+---
 
-6. **Run Migrations**
-   ```bash
-   # Via ECS task
-   aws ecs run-task \
-     --cluster tinychanges \
-     --task-definition tinychanges-migration \
-     --launch-type FARGATE
-   ```
-
-### Database Setup (AWS RDS)
-
-1. **Create database backup policy**
-   - Backup retention: 30 days
-   - Multi-AZ deployment for production
-
-2. **Enable enhanced monitoring**
-   ```bash
-   aws rds modify-db-instance \
-     --db-instance-identifier tinychanges-db \
-     --enable-cloudwatch-logs-exports postgresql \
-     --apply-immediately
-   ```
-
-### Domain & SSL Setup
-
-1. **Register domain** (Route 53 or external registrar)
-
-2. **Create SSL certificate** (AWS ACM)
-   ```bash
-   aws acm request-certificate \
-     --domain-name tinychanges.com \
-     --domain-name "*.tinychanges.com" \
-     --validation-method DNS
-   ```
-
-3. **Configure DNS** (Route 53)
-   - Create A record pointing to ALB
-   - Create CNAME for API subdomain
-
-## Option 2: Docker Compose on VPS
-
-### Prerequisites
-- Linux VPS (Ubuntu 20.04+)
-- Docker and Docker Compose
-- SSH access
-
-### Setup
-
-1. **Clone repository on VPS**
-   ```bash
-   git clone https://github.com/anoopnair-aipm/tinyChanges.git
-   cd tinyChanges
-   ```
-
-2. **Create production docker-compose.yml**
-   ```yaml
-   version: '3.8'
-   services:
-     postgres:
-       image: postgres:16-alpine
-       environment:
-         POSTGRES_DB: tinychanges
-         POSTGRES_PASSWORD: ${DB_PASSWORD}
-       volumes:
-         - postgres_data:/var/lib/postgresql/data
-       restart: always
-
-     backend:
-       build: ./backend
-       ports:
-         - "5000:5000"
-       environment:
-         NODE_ENV: production
-         DATABASE_URL: postgresql://postgres:${DB_PASSWORD}@postgres:5432/tinychanges
-         GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
-         GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
-       depends_on:
-         - postgres
-       restart: always
-
-     frontend:
-       build: ./frontend
-       ports:
-         - "3000:3000"
-       environment:
-         NEXT_PUBLIC_API_URL: https://api.tinychanges.com
-       restart: always
-
-     nginx:
-       image: nginx:alpine
-       ports:
-         - "80:80"
-         - "443:443"
-       volumes:
-         - ./nginx.conf:/etc/nginx/nginx.conf
-         - ./certs:/etc/nginx/certs
-       depends_on:
-         - backend
-         - frontend
-       restart: always
-
-   volumes:
-     postgres_data:
-   ```
-
-3. **Set environment variables**
-   ```bash
-   cat > .env.production << EOF
-   DB_PASSWORD=your_secure_password
-   GOOGLE_CLIENT_ID=xxx
-   GOOGLE_CLIENT_SECRET=xxx
-   EOF
-   chmod 600 .env.production
-   ```
-
-4. **Deploy**
-   ```bash
-   docker-compose -f docker-compose.prod.yml up -d
-   docker-compose exec backend npm run db:migrate
-   ```
-
-## Monitoring & Logging
-
-### CloudWatch (AWS)
+## Verifying the Deployment
 
 ```bash
-# Create log group
-aws logs create-log-group --log-group-name /tinychanges/api
+# Health check
+curl https://tinychanges-api-production.up.railway.app/api/health
 
-# View logs
-aws logs tail /tinychanges/api --follow
+# Expected response:
+# {"status":"ok","database":"connected","timestamp":"..."}
 ```
 
-### Application Performance Monitoring
+If `"database":"connected"`, the backend is running and the database connection is working.
 
-Consider integrating:
-- **Sentry** for error tracking
-- **DataDog** for APM
-- **New Relic** for full-stack monitoring
+---
 
-### Set up alerts
-- Database CPU > 80%
-- API response time > 500ms
-- Error rate > 1%
-- Disk space < 20%
+## Database
 
-## Backup & Recovery
+The database schema is created automatically by the backend on startup. You do not need to run any migration scripts manually.
 
-### Automated Backups
+If you need to inspect the database directly, use the Railway dashboard's built-in PostgreSQL client, or use a tool like `psql` with the `DATABASE_URL` from the Railway service variables.
 
-**AWS RDS**:
-- Automated backups: 30 days
-- Manual snapshots: Daily
+---
 
-**Application Data**:
-```bash
-# S3 backup script
-0 2 * * * aws s3 sync /data s3://tinychanges-backups/$(date +\%Y-\%m-\%d)
-```
+## Rollbacks
 
-### Recovery Plan
+**Frontend**: Vercel keeps deployment history. Go to the Vercel dashboard, select a previous deployment, and click **Redeploy**.
 
-1. **Database failure**: Restore from RDS snapshot
-2. **Application failure**: Redeploy from Docker image
-3. **Data loss**: Restore from S3 backups
+**Backend**: Railway keeps deployment history. Go to the Railway dashboard, select a previous deployment, and click **Rollback**.
 
-## Security Best Practices
+---
 
-1. **Secrets Management**
-   - Use AWS Secrets Manager or HashiCorp Vault
-   - Rotate credentials regularly
+## Monitoring
 
-2. **Network Security**
-   - VPC with private subnets for database
-   - Security groups with least privilege access
-   - WAF rules for common attacks
+- **Health endpoint**: `GET /api/health` — check periodically to verify the backend and database are up
+- **Vercel dashboard**: Shows build logs, deployment status, and function logs
+- **Railway dashboard**: Shows build logs, deployment status, resource usage, and PostgreSQL metrics
 
-3. **Data Encryption**
-   - RDS: Encryption at rest (KMS)
-   - ECS: Encryption in transit (TLS 1.2+)
-   - S3: Server-side encryption
+---
 
-4. **Access Control**
-   - IAM policies for AWS resources
-   - Database user with minimal permissions
-   - API authentication/authorization
+## Security Checklist Before Going Live
 
-## Scaling Considerations
-
-### Horizontal Scaling
-- ECS: Auto-scaling based on CPU/memory
-- RDS: Read replicas for read-heavy workloads
-- CloudFront: CDN for static assets
-
-### Database Optimization
-- Connection pooling (PgBouncer)
-- Query optimization and indexes
-- Caching layer (Redis) for future
-
-## Post-Deployment
-
-1. **Health checks**
-   - Monitor API endpoints
-   - Database connectivity
-   - SSL certificate expiry
-
-2. **Regular updates**
-   - OS and dependency patches
-   - Security updates
-   - Performance optimization
-
-3. **Disaster recovery testing**
-   - Test backup restoration monthly
-   - Document runbooks
-   - Practice incident response
-
-## Useful Deployment Commands
-
-```bash
-# View logs
-docker-compose logs -f backend
-
-# Scale backend instances
-docker-compose up -d --scale backend=3
-
-# Database maintenance
-docker-compose exec postgres psql -U postgres -d tinychanges -c "VACUUM ANALYZE;"
-
-# Update and restart
-git pull origin main
-docker-compose up -d --build
-docker-compose exec backend npm run db:migrate
-```
+- [ ] `JWT_SECRET` is a long (32+ characters) random string — not a dictionary word
+- [ ] `GOOGLE_CLIENT_SECRET` is stored only in Railway env vars, not in source code
+- [ ] `NEXT_PUBLIC_*` variables contain only non-secret values (they are visible in browser bundles)
+- [ ] Google OAuth consent screen only has the required scopes (email, profile)
+- [ ] Vercel deployment protection is configured appropriately for your use case
+- [ ] Railway PostgreSQL is not exposed publicly (it communicates internally with the backend service)
